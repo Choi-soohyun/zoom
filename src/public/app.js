@@ -1,41 +1,60 @@
-// Put all your frontend code here.
-const messageList = document.querySelector("ul");
-const nickForm = document.querySelector("#nick");
-const messageForm = document.querySelector("#message");
-const socket = new WebSocket(`ws://${window.location.host}`)
+// console.log(io);- 자동적으로 backend socket.io 와 연결해주는 fn
+const socket = io();
 
-function makeMessage(type, payload) {
-  const msg = { type, payload };
-  return JSON.stringify(msg);
+const welcome = document.querySelector('#welcome')
+const form = welcome.querySelector('form')
+const room = document.querySelector('#room')
+
+room.hidden = true
+
+let roomName;
+
+function addMessage(msg) {
+   const ul = room.querySelector('ul')
+   const li = document.createElement('li')
+   li.innerText = msg
+   ul.appendChild(li)
 }
 
-socket.addEventListener("open", () => {
-  // console.log("Connectes to Server");
-});
-
-socket.addEventListener("message", (message) => {
-  const li = document.createElement("li");
-  li.innerText = message.data;
-  messageList.append(li);
-});
-
-socket.addEventListener("close", () => {
-  // console.log("DisConnected from Server close");
-});
-
-function handleSubmit(event) {
-  event.preventDefault();
-  const input = messageForm.querySelector("input");
-  socket.send(makeMessage("new_message", input.value));
-  input.value = "";
+function handleMessageSubmit(event) {
+   event.preventDefault();
+   const input = room.querySelector('input')
+   socket.emit('new_message', input.value, roomName, () => {
+      addMessage(`Me: ${input.value}`)
+   })
+   input.value = '';
 }
 
-function handleNickSubmit(event) {
-  event.preventDefault();
-  const input = nickForm.querySelector("input");
-  socket.send(makeMessage("nickname", input.value));
-  input.value = "";
+function showRoom(msg) {
+   console.log(`The backend says: ${msg}, Backend is done!`);
+
+   const h3 = room.querySelector('h3')
+   h3.innerText = `Room ${roomName}`
+
+   room.hidden = false
+   welcome.hidden = true
+
+   const form = room.querySelector('form')
+   form.addEventListener('submit', handleMessageSubmit)
 }
 
-messageForm.addEventListener("submit", handleSubmit);
-nickForm.addEventListener("submit", handleNickSubmit);
+function handleNoomSubmit(event) {
+   event.preventDefault();
+   const input = form.querySelector('input')
+   socket.emit('enter_noom', input.value, showRoom) // fn  마지막
+   roomName = input.value;
+   input.value = '';
+}
+
+form.addEventListener('submit', handleNoomSubmit)
+
+socket.on('welcome', () => {
+   addMessage('Someone joined!')
+})
+socket.on('bye', () => {
+   addMessage('Someone left!')
+})
+socket.on('sendMsg', (msg) => {
+   addMessage(`You: ${msg}`)
+})
+// socket.on('sendMsg',addMessage(`You: ${msg}`)) 위와 같음
